@@ -43,11 +43,10 @@
     "desktop",
     "widgets",
     "electron",
-    "rainmeter",
     "overlay",
     "typescript"
   ],
-  "author": "NxUI",
+  "author": "Nex",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.11.0",

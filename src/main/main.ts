@@ -144,6 +144,7 @@ function copyExampleWidgets(targetDir: string): void {
   const possibleSources = [
     path.join(__dirname, "..", "..", "widgets"),
     path.join(app.getAppPath(), "widgets"),
+    path.join(process.resourcesPath, "widgets"),
   ];
 
   for (const source of possibleSources) {
