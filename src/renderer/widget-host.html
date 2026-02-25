@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NxUI Widget</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      user-select: none;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    #nxui-widget-root {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    #nxui-widget-styles {}
+  </style>
+</head>
+
+<body>
+  <div id="nxui-widget-root"></div>
+  <script>
+    (function () {
+      let widgetId = "";
+      let intervals = [];
+      let timeouts = [];
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+
+      window.nxui.onInit((data) => {
+        widgetId = data.id;
+
+        if (data.styles) {
+          const styleEl = document.createElement("style");
+          styleEl.id = "nxui-widget-styles";
+          styleEl.textContent = data.styles;
+          document.head.appendChild(styleEl);
+        }
+
+        const root = document.getElementById("nxui-widget-root");
+        root.innerHTML = data.html;
+
+        if (data.clickThrough) {
+          document.body.style.pointerEvents = "none";
+        }
+
+        setupDrag(root);
+
+        if (data.onMountCode) {
+          try {
+            let onMount;
+            const code = data.onMountCode.trim();
+
+            if (code.startsWith("onMount") && code.indexOf("(") < code.indexOf("{")) {
+              const obj = eval("({" + code + "})");
+              onMount = obj.onMount;
+            } else {
+              onMount = eval("(" + code + ")");
+            }
+
+            const ctx = {
+              getElementById: (id) => document.getElementById(id),
+              querySelector: (sel) => root.querySelector(sel),
+              querySelectorAll: (sel) => root.querySelectorAll(sel),
+              getRoot: () => root,
+              setInterval: (cb, ms) => {
+                const id = window.setInterval(cb, ms);
+                intervals.push(id);
+                return id;
+              },
+              setTimeout: (cb, ms) => {
+                const id = window.setTimeout(cb, ms);
+                timeouts.push(id);
+                return id;
+              },
+              clearInterval: (id) => {
+                window.clearInterval(id);
+                intervals = intervals.filter(i => i !== id);
+              },
+              clearTimeout: (id) => {
+                window.clearTimeout(id);
+                timeouts = timeouts.filter(i => i !== id);
+              },
+              sendToMain: (channel, msgData) => {
+                window.nxui.sendToMain(channel, msgData);
+              },
+              onMessage: (channel, callback) => {
+                window.nxui.onMessage(channel, callback);
+              },
+            };
+
+            onMount(ctx);
+          } catch (err) {
+            console.error("[NxUI Widget] Execution error:", err);
+            showErrorOverlay(root, err.message);
+          }
+        }
+      });
+
+      function showErrorOverlay(root, message) {
+        const overlay = document.createElement("div");
+        overlay.style.position = "absolute";
+        overlay.style.top = "0";
+        overlay.style.left = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.backgroundColor = "rgba(220, 38, 38, 0.9)";
+        overlay.style.color = "white";
+        overlay.style.padding = "20px";
+        overlay.style.fontFamily = "'Segoe UI', sans-serif";
+        overlay.style.fontSize = "14px";
+        overlay.style.overflow = "auto";
+        overlay.style.zIndex = "9999";
+        overlay.style.borderRadius = "8px";
+        overlay.style.border = "1px solid #f87171";
+
+        overlay.innerHTML = `
+          <div style="font-weight: bold; margin-bottom: 8px;">Widget Runtime Error</div>
+          <div style="font-family: monospace; white-space: pre-wrap; font-size: 12px; color: #fee2e2;">${message}</div>
+        `;
+
+        root.appendChild(overlay);
+      }
+
+      function setupDrag(root) {
+        root.addEventListener("mousedown", (e) => {
+          if (e.button !== 0) return;
+          const tag = e.target.tagName.toLowerCase();
+          if (["input", "textarea", "button", "select", "a"].includes(tag)) return;
+
+          isDragging = true;
+          dragStartX = e.screenX;
+          dragStartY = e.screenY;
+          e.preventDefault();
+        });
+
+        document.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+
+          const deltaX = e.screenX - dragStartX;
+          const deltaY = e.screenY - dragStartY;
+
+          if (deltaX !== 0 || deltaY !== 0) {
+            window.nxui.dragMove(deltaX, deltaY, widgetId);
+            dragStartX = e.screenX;
+            dragStartY = e.screenY;
+          }
+        });
+
+        document.addEventListener("mouseup", () => {
+          isDragging = false;
+        });
+      }
+
+      window.addEventListener("beforeunload", () => {
+        intervals.forEach(id => window.clearInterval(id));
+        timeouts.forEach(id => window.clearTimeout(id));
+      });
+    })();
+  </script>
+</body>
+
+</html>
