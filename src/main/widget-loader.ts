@@ -1,4 +1,4 @@
-import * as esbuild from "esbuild";
+import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
 import type { NxWidget } from "../sdk/types";
@@ -13,22 +13,15 @@ export async function loadWidget(
     throw new Error(`Widget file not found: ${absolutePath}`);
   }
 
-  const result = await esbuild.build({
-    entryPoints: [absolutePath],
-    bundle: false,
-    write: false,
-    format: "cjs",
-    platform: "node",
-    target: "es2022",
-    loader: { ".ts": "ts" },
+  const rawCode = fs.readFileSync(absolutePath, "utf-8");
+  const result = ts.transpileModule(rawCode, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.CommonJS,
+    }
   });
 
-  if (result.errors.length > 0) {
-    const messages = result.errors.map((e) => e.text).join("\n");
-    throw new Error(`Transpile error in ${absolutePath}:\n${messages}`);
-  }
-
-  const jsCode = result.outputFiles[0].text;
+  const jsCode = result.outputText;
 
   const tempModule = { exports: {} as any };
 

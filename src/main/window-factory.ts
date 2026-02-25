@@ -1,5 +1,6 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, app } from "electron";
 import * as path from "path";
+import * as fs from "fs";
 import type { NxWidget, WidgetState, WidgetInstance } from "../sdk/types";
 import { SettingsStore } from "./settings-store";
 
@@ -13,7 +14,10 @@ export async function createWidgetWindow(
   const isBottom = desktopLevel === "bottom";
   const isTop = desktopLevel === "top";
 
+  const iconPath = path.join(app.getAppPath(), "assets", "icon.png");
+
   const win = new BrowserWindow({
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     width: state.width || config.width,
     height: state.height || config.height,
     x: state.position.x,

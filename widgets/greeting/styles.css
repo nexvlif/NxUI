@@ -9,12 +9,7 @@
   border-radius: 14px;
   backdrop-filter: blur(20px);
   padding: 16px 24px;
-  cursor: grab;
   font-family: 'Segoe UI', system-ui, sans-serif;
-}
-
-.greeting-widget:active {
-  cursor: grabbing;
 }
 
 .greeting-emoji {

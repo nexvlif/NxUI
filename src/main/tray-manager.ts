@@ -11,8 +11,16 @@ export class TrayManager {
   }
 
   create(): void {
-    const icon = nativeImage.createFromBuffer(this.createIconBuffer());
-    icon.setTemplateImage(false);
+    const iconPath = path.join(app.getAppPath(), "assets", "icon.png");
+    let icon;
+
+    if (require("fs").existsSync(iconPath)) {
+      icon = nativeImage.createFromPath(iconPath);
+      icon.resize({ width: 16, height: 16 });
+    } else {
+      icon = nativeImage.createFromBuffer(this.createIconBuffer());
+      icon.setTemplateImage(false);
+    }
 
     this.tray = new Tray(icon);
     this.tray.setToolTip("NxUI — Desktop Widgets");
@@ -55,10 +63,13 @@ export class TrayManager {
       return;
     }
 
+    const iconPath = path.join(app.getAppPath(), "assets", "icon.png");
+
     this.managerWindow = new BrowserWindow({
       width: 600,
       height: 500,
       title: "NxUI — Widget Manager",
+      icon: require("fs").existsSync(iconPath) ? iconPath : undefined,
       frame: true,
       resizable: true,
       minimizable: true,

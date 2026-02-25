@@ -147,25 +147,39 @@ function copyExampleWidgets(targetDir: string): void {
     path.join(process.resourcesPath, "widgets"),
   ];
 
+  function copyDirSync(src: string, dest: string) {
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    for (const item of fs.readdirSync(src, { withFileTypes: true })) {
+      const srcPath = path.join(src, item.name);
+      const destPath = path.join(dest, item.name);
+      if (item.isDirectory()) {
+        copyDirSync(srcPath, destPath);
+      } else {
+        if (!fs.existsSync(destPath)) {
+          fs.copyFileSync(srcPath, destPath);
+        }
+      }
+    }
+  }
+
   for (const source of possibleSources) {
     if (!fs.existsSync(source)) continue;
 
-    const entries = fs.readdirSync(source, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
+    try {
+      const entries = fs.readdirSync(source, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const srcFolder = path.join(source, entry.name);
+        const destFolder = path.join(targetDir, entry.name);
 
-      const srcFolder = path.join(source, entry.name);
-      const destFolder = path.join(targetDir, entry.name);
-
-      if (fs.existsSync(destFolder)) continue;
-
-      fs.mkdirSync(destFolder, { recursive: true });
-      const files = fs.readdirSync(srcFolder);
-      for (const file of files) {
-        fs.copyFileSync(path.join(srcFolder, file), path.join(destFolder, file));
+        if (!fs.existsSync(destFolder)) {
+          copyDirSync(srcFolder, destFolder);
+          console.log(`[Main] Copied widget: ${entry.name}/`);
+        }
       }
-      console.log(`[Main] Copied widget: ${entry.name}/`);
+      return;
+    } catch (err) {
+      console.error(`[Main] Failed reading source ${source}:`, err);
     }
-    return;
   }
 }

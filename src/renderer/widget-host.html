@@ -73,8 +73,18 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
+    body.nxui-edit-mode {
+      pointer-events: all !important;
+    }
+
     body.nxui-edit-mode .nxui-edit-overlay {
       display: block;
+      pointer-events: all !important;
+      cursor: grab !important;
+    }
+
+    body.nxui-edit-mode:active .nxui-edit-overlay {
+      cursor: grabbing !important;
     }
 
     @keyframes nxui-edit-pulse {
@@ -126,7 +136,6 @@
 <body>
   <div id="nxui-widget-root"></div>
   <div class="nxui-edit-overlay">
-    <span class="nxui-edit-badge">EDIT</span>
   </div>
 
   <script>
@@ -227,7 +236,7 @@
       }
 
       function setupDrag(root) {
-        root.addEventListener("mousedown", (e) => {
+        document.body.addEventListener("mousedown", (e) => {
           if (!document.body.classList.contains("nxui-edit-mode")) return;
 
           if (e.button !== 0) return;
