@@ -4,6 +4,7 @@ import { scanWidgets, filePathToWidgetId } from "./widget-scanner";
 import { createWidgetWindow } from "./window-factory";
 import { setupIPC } from "./ipc-handlers";
 import { SettingsStore } from "./settings-store";
+import { ThemeManager } from "./theme-manager";
 import { FileWatcher } from "./file-watcher";
 import type { WidgetInstance } from "../sdk/types";
 
@@ -11,12 +12,14 @@ export class WidgetManager {
   private widgets = new Map<string, WidgetInstance>();
   private windows = new Map<string, BrowserWindow>();
   private settings: SettingsStore;
+  private themeManager: ThemeManager;
   private fileWatcher: FileWatcher;
   private widgetsDir: string;
 
-  constructor(widgetsDir: string, settings: SettingsStore) {
+  constructor(widgetsDir: string, settings: SettingsStore, themeManager: ThemeManager) {
     this.widgetsDir = widgetsDir;
     this.settings = settings;
+    this.themeManager = themeManager;
     this.fileWatcher = new FileWatcher(widgetsDir);
 
     setupIPC(this, settings);
@@ -82,6 +85,8 @@ export class WidgetManager {
       const win = await createWidgetWindow(instance, this.settings);
       win.on("closed", () => this.windows.delete(widgetId));
       this.windows.set(widgetId, win);
+
+      await this.themeManager.injectTheme(win);
     }
   }
 
@@ -105,6 +110,8 @@ export class WidgetManager {
       const win = await createWidgetWindow(instance, this.settings);
       win.on("closed", () => this.windows.delete(widgetId));
       this.windows.set(widgetId, win);
+
+      await this.themeManager.injectTheme(win);
     } else {
       const win = this.windows.get(widgetId);
       if (win && !win.isDestroyed()) win.close();

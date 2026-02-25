@@ -4,11 +4,40 @@
   "description": "NxUI",
   "main": "dist/main/main.js",
   "scripts": {
-    "copy-html": "powershell -Command \"Copy-Item src/renderer/*.html dist/renderer/ -Force\"",
+    "copy-html": "powershell -Command \"Copy-Item src/renderer/*.html dist/renderer/ -Force; Copy-Item src/renderer/*.css dist/renderer/ -Force\"",
     "build": "tsc && npm run copy-html",
     "start": "npm run build && electron .",
     "dev": "tsc && npm run copy-html && electron .",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "pack": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.nxui.desktop",
+    "productName": "NxUI",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NxUI"
+    },
+    "extraResources": [
+      {
+        "from": "widgets",
+        "to": "widgets",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "keywords": [
     "desktop",
@@ -23,11 +52,13 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "electron": "^33.0.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "chokidar": "^3.6.0",
     "electron-store": "^8.2.0",
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.24.0",
+    "extract-zip": "^2.0.1"
   }
 }

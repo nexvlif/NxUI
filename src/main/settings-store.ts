@@ -9,6 +9,7 @@ interface StoreData {
     widgetsDirectory: string;
     startOnBoot: boolean;
     startMinimized: boolean;
+    activeTheme: string;
   };
 }
 
@@ -18,6 +19,7 @@ const DEFAULT_STORE: StoreData = {
     widgetsDirectory: "",
     startOnBoot: false,
     startMinimized: true,
+    activeTheme: "miku-garden",
   },
 };
 
@@ -85,6 +87,15 @@ export class SettingsStore {
 
   setStartOnBoot(value: boolean): void {
     this.data.globalSettings.startOnBoot = value;
+    this.save();
+  }
+
+  getActiveTheme(): string {
+    return this.data.globalSettings.activeTheme || "miku-garden";
+  }
+
+  setActiveTheme(themeId: string): void {
+    this.data.globalSettings.activeTheme = themeId;
     this.save();
   }
 

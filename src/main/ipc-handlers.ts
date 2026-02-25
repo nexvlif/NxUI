@@ -1,4 +1,6 @@
 import { ipcMain, BrowserWindow } from "electron";
+import * as fs from "fs";
+import { dialog } from "electron";
 import { SettingsStore } from "./settings-store";
 import type { WidgetInstance } from "../sdk/types";
 
@@ -49,7 +51,7 @@ export function setupIPC(manager: WidgetManagerRef, settings: SettingsStore): vo
     try {
       await manager.toggleWidget(data.id, data.enabled);
     } catch (err: any) {
-      console.error(`[IPC] Failed to toggle widget ${data.id}:`, err.message);
+      console.error(`[IPC] Toggle widget failed:`, err.message);
     }
   });
 
@@ -57,7 +59,7 @@ export function setupIPC(manager: WidgetManagerRef, settings: SettingsStore): vo
     try {
       await manager.toggleWidgetDrag(data.id, data.draggable);
     } catch (err: any) {
-      console.error(`[IPC] Failed to toggle drag ${data.id}:`, err.message);
+      console.error(`[IPC] Toggle drag failed:`, err.message);
     }
   });
 
@@ -65,13 +67,53 @@ export function setupIPC(manager: WidgetManagerRef, settings: SettingsStore): vo
     try {
       await manager.reloadWidget(data.id);
     } catch (err: any) {
-      console.error(`[IPC] Failed to reload widget ${data.id}:`, err.message);
+      console.error(`[IPC] Reload failed:`, err.message);
     }
   });
 
   ipcMain.handle("open-widgets-folder", () => {
     const { shell } = require("electron");
     shell.openPath(manager.getWidgetsDir());
+  });
+
+  ipcMain.handle("widget-fetch", async (_event, url: string) => {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "NxUI/Widget Engine" }
+      });
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text;
+      }
+    } catch (err: any) {
+      throw new Error(`Fetch failed: ${err.message}`);
+    }
+  });
+
+  ipcMain.handle("widget-read-file", async (_event, filePath: string) => {
+    try {
+      if (!fs.existsSync(filePath)) throw new Error("File not found");
+      return fs.readFileSync(filePath, "utf-8");
+    } catch (err: any) {
+      throw new Error(`Read failed: ${err.message}`);
+    }
+  });
+
+  ipcMain.handle("widget-write-file", async (_event, data: { path: string; content: string }) => {
+    try {
+      fs.writeFileSync(data.path, data.content, "utf-8");
+      return true;
+    } catch (err: any) {
+      throw new Error(`Write failed: ${err.message}`);
+    }
+  });
+
+  ipcMain.handle("widget-show-open-dialog", async (_event, options: any) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+    if (canceled) return [];
+    return filePaths;
   });
 
   console.log("[IPC] All handlers registered.");

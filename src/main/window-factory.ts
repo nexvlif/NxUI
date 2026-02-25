@@ -54,7 +54,7 @@ export async function createWidgetWindow(
     clickThrough: config.clickThrough || !state.draggable,
   });
 
-  if (!state.draggable) {
+  if (instance.config.clickThrough) {
     win.setIgnoreMouseEvents(true, { forward: true });
   }
 

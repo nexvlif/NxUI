@@ -1,7 +1,3 @@
-// ============================================================
-// NxUI — Manager UI Preload Script
-// ============================================================
-
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("nxuiManager", {
@@ -14,4 +10,13 @@ contextBridge.exposeInMainWorld("nxuiManager", {
     ipcRenderer.invoke("reload-widget", { id }),
   openWidgetsFolder: () =>
     ipcRenderer.invoke("open-widgets-folder"),
+
+  getStoreWidgets: () => ipcRenderer.invoke("get-store-widgets"),
+  installStoreWidget: (id: string, url: string) => ipcRenderer.invoke("install-store-widget", { id, url }),
+  uninstallWidget: (id: string) => ipcRenderer.invoke("uninstall-widget", id),
+
+  getThemes: () => ipcRenderer.invoke("get-themes"),
+  setTheme: (id: string) => ipcRenderer.invoke("set-theme", id),
+  getAutoStart: () => ipcRenderer.invoke("get-auto-start"),
+  setAutoStart: (enabled: boolean) => ipcRenderer.invoke("set-auto-start", enabled),
 });
