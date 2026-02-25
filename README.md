@@ -3,6 +3,8 @@
   <h1>NxUI</h1>
   <p><strong>A Next-Generation, Open-Source Desktop Widget Engine</strong></p>
   <p><em>Built with Web Technologies, Optimized for the Desktop. Welcome to the Future.</em></p>
+  <br />
+  <img src="assets/preview.png" alt="NxUI Preview" width="800" />
 </div>
 
 ---
