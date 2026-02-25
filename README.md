@@ -34,10 +34,8 @@ We know Chromium/Electron is heavily criticized for memory bloat. NxUI specifica
 Out of the box, NxUI comes with gorgeous showcase widgets:
 1. **Clock:** A dynamic SVG-based animated clock.
 2. **Notes:** A full Markdown editor that saves straight to your disk.
-3. **Spotify Player (Visual):** A beautifully animated mini-player UI.
-4. **System Monitor:** Real-time RAM & CPU gauges.
-5. **Weather:** Live animated weather fed by `wttr.in`.
-6. **Greeting:** A personalized dynamic message widget.
+3. **System Monitor:** Real-time RAM & CPU gauges.
+4. **Greeting:** A personalized dynamic message widget.
 
 ## Getting Started
 
