@@ -29,6 +29,7 @@ export async function createWidgetWindow(
     skipTaskbar: true,
     hasShadow: false,
     focusable: true,
+    opacity: state.opacity ?? 1,
     webPreferences: {
       preload: path.join(__dirname, "..", "renderer", "widget-host.js"),
       contextIsolation: true,
@@ -49,6 +50,8 @@ export async function createWidgetWindow(
   const styles = config.styles || "";
   const onMountCode = config.onMount ? config.onMount.toString() : "";
 
+  const savedSettings = settings.getWidgetSettings(id);
+
   win.webContents.send("widget-init", {
     id,
     name: config.name,
@@ -56,6 +59,8 @@ export async function createWidgetWindow(
     styles,
     onMountCode,
     clickThrough: config.clickThrough || !state.draggable,
+    settings: savedSettings,
+    settingsSchema: config.settings || [],
   });
 
   if (instance.config.clickThrough) {
@@ -75,7 +80,7 @@ export async function createWidgetWindow(
     settings.setWidgetState(id, instance.state);
   });
 
-  console.log(`[WindowFactory] Created: ${id} (level: ${desktopLevel}, draggable: ${state.draggable})`);
+  console.log(`[WindowFactory] Created: ${id} (level: ${desktopLevel}, opacity: ${state.opacity ?? 1})`);
 
   return win;
 }

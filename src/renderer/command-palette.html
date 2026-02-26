@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>NxUI Command Palette</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --md-sys-color-primary: #a1c9ff;
+      --md-sys-color-surface: #111418;
+      --md-sys-color-surface-container: #1e2025;
+      --md-sys-color-surface-container-high: #282a2f;
+      --md-sys-color-on-surface: #e2e2e5;
+      --md-sys-color-on-surface-variant: #c3c6cf;
+      --md-sys-color-outline: #8d9199;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      background: transparent !important;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .palette {
+      width: 100%;
+      max-width: 560px;
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 28px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      animation: paletteIn 0.2s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    @keyframes paletteIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.97);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--md-sys-color-surface-container);
+      gap: 16px;
+    }
+
+    .search-icon {
+      color: var(--md-sys-color-on-surface-variant);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--md-sys-color-on-surface);
+      font-size: 18px;
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+    }
+
+    .search-input::placeholder {
+      color: var(--md-sys-color-outline);
+    }
+
+    .search-hint {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--md-sys-color-surface-container);
+      font-weight: 600;
+    }
+
+    .results {
+      max-height: 380px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .results::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .results::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .results::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .result-group {
+      padding: 12px 16px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--md-sys-color-primary);
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .result-item:hover,
+    .result-item.active {
+      background: var(--md-sys-color-surface-container);
+    }
+
+    .result-item.active {
+      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
+    }
+
+    .result-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .icon-widget {
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-primary);
+    }
+
+    .icon-theme {
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-primary);
+    }
+
+    .icon-action {
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-primary);
+    }
+
+    .icon-system {
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-primary);
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-name {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .result-desc {
+      font-size: 13px;
+      color: var(--md-sys-color-on-surface-variant);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-badge {
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .badge-on {
+      background: rgba(0, 230, 118, 0.15);
+      color: #00e676;
+    }
+
+    .badge-off {
+      background: rgba(255, 82, 82, 0.15);
+      color: #ff5252;
+    }
+
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 14px;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-top: 1px solid var(--md-sys-color-surface-container);
+      font-size: 11px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .footer-keys {
+      display: flex;
+      gap: 16px;
+    }
+
+    .footer-key {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    kbd {
+      background: var(--md-sys-color-surface-container);
+      border: 1px solid var(--md-sys-color-outline);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: inherit;
+      font-size: 11px;
+      color: var(--md-sys-color-on-surface);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="palette">
+    <div class="search-box">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" class="search-input" id="palette-input" placeholder="Search widgets, themes, actions..."
+        autofocus>
+      <span class="search-hint">ESC</span>
+    </div>
+    <div class="results" id="palette-results"></div>
+    <div class="footer">
+      <span>NxUI Command Palette</span>
+      <div class="footer-keys">
+        <span class="footer-key"><kbd>↑↓</kbd> Navigate</span>
+        <span class="footer-key"><kbd>↵</kbd> Run</span>
+        <span class="footer-key"><kbd>Esc</kbd> Close</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      let allActions = [];
+      let filtered = [];
+      let activeIndex = 0;
+
+      function applyMaterialYou(hexColor) {
+        const hex2rgb = (hex) => {
+          let c = hex.substring(1);
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          return [parseInt(c.substr(0, 2), 16), parseInt(c.substr(2, 2), 16), parseInt(c.substr(4, 2), 16)];
+        };
+        const rgb2hsl = (r, g, b) => {
+          r /= 255; g /= 255; b /= 255;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          let h = 0, s = 0, l = (max + min) / 2;
+          if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+              case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+              case g: h = (b - r) / d + 2; break;
+              case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+          }
+          return [h * 360, s * 100, l * 100];
+        };
+
+        const [r, g, b] = hex2rgb(hexColor);
+        const [h, s, l] = rgb2hsl(r, g, b);
+
+        const root = document.documentElement;
+        root.style.setProperty('--md-sys-color-primary', `hsl(${h}, ${s}%, 80%)`);
+        root.style.setProperty('--md-sys-color-on-primary', `hsl(${h}, ${s}%, 20%)`);
+        root.style.setProperty('--md-sys-color-primary-container', `hsl(${h}, ${s}%, 30%)`);
+
+        root.style.setProperty('--md-sys-color-surface', `hsl(${h}, 10%, 10%)`);
+        root.style.setProperty('--md-sys-color-surface-container', `hsl(${h}, 10%, 15%)`);
+        root.style.setProperty('--md-sys-color-surface-container-high', `hsl(${h}, 10%, 20%)`);
+        root.style.setProperty('--md-sys-color-on-surface', `hsl(${h}, 10%, 90%)`);
+        root.style.setProperty('--md-sys-color-on-surface-variant', `hsl(${h}, 10%, 70%)`);
+        root.style.setProperty('--md-sys-color-outline', `hsl(${h}, 10%, 30%)`);
+      }
+
+      async function init() {
+        if (window.nxuiManager && window.nxuiManager.getAccentColor) {
+          const accent = await window.nxuiManager.getAccentColor();
+          applyMaterialYou(accent);
+          window.nxuiManager.onAccentColorChanged((newColor) => {
+            applyMaterialYou(newColor);
+          });
+        }
+
+        const widgets = await window.nxuiManager.getWidgetsList();
+        const themeData = await window.nxuiManager.getThemes();
+
+        allActions = [];
+
+        for (const w of widgets) {
+          allActions.push({
+            group: "Widgets",
+            name: `${w.enabled ? 'Disable' : 'Enable'} ${w.name}`,
+            desc: w.enabled ? 'Turn off this widget' : 'Turn on this widget',
+            icon: 'widget',
+            badge: w.enabled ? 'ON' : 'OFF',
+            action: async () => {
+              await window.nxuiManager.toggleWidget(w.id, !w.enabled);
+              window.close();
+            }
+          });
+          allActions.push({
+            group: "Widgets",
+            name: `Reload ${w.name}`,
+            desc: `Hot-reload ${w.name} widget`,
+            icon: 'widget',
+            action: async () => {
+              await window.nxuiManager.reloadWidget(w.id);
+              window.close();
+            }
+          });
+        }
+
+        for (const theme of themeData.themes) {
+          allActions.push({
+            group: "Themes",
+            name: `Theme: ${theme.name}`,
+            desc: theme.id === themeData.active ? 'Currently active' : 'Switch to this theme',
+            icon: 'theme',
+            badge: theme.id === themeData.active ? 'ACTIVE' : null,
+            action: async () => {
+              await window.nxuiManager.setTheme(theme.id);
+              window.close();
+            }
+          });
+        }
+
+        allActions.push(
+          {
+            group: "Actions",
+            name: "Hide All Widgets",
+            desc: "Ctrl+H — Toggle widget visibility",
+            icon: "action",
+            action: async () => {
+              await window.nxuiManager.hideAllWidgets();
+              window.close();
+            }
+          },
+          {
+            group: "Actions",
+            name: "Show All Widgets",
+            desc: "Reveal all hidden widgets",
+            icon: "action",
+            action: async () => {
+              await window.nxuiManager.showAllWidgets();
+              window.close();
+            }
+          },
+          {
+            group: "Actions",
+            name: "Open Widgets Folder",
+            desc: "Open the widgets directory in Explorer",
+            icon: "system",
+            action: async () => {
+              await window.nxuiManager.openWidgetsFolder();
+              window.close();
+            }
+          },
+          {
+            group: "Actions",
+            name: "Save Current Layout",
+            desc: "Save all widget positions as a profile",
+            icon: "system",
+            action: async () => {
+              const name = "Profile " + new Date().toLocaleTimeString();
+              await window.nxuiManager.saveProfile(name);
+              window.close();
+            }
+          }
+        );
+
+        filtered = [...allActions];
+        render();
+      }
+
+      function render() {
+        const container = document.getElementById("palette-results");
+
+        if (filtered.length === 0) {
+          container.innerHTML = '<div class="empty-state">No matching commands found</div>';
+          return;
+        }
+
+        let html = "";
+        let currentGroup = "";
+
+        filtered.forEach((item, i) => {
+          if (item.group !== currentGroup) {
+            currentGroup = item.group;
+            html += `<div class="result-group">${currentGroup}</div>`;
+          }
+
+          const isActive = i === activeIndex;
+          const badgeClass = item.badge === 'ON' ? 'badge-on' : item.badge === 'OFF' ? 'badge-off' : 'badge-on';
+          const badgeHtml = item.badge ? `<span class="result-badge ${badgeClass}">${item.badge}</span>` : '';
+
+          html += `
+            <div class="result-item ${isActive ? 'active' : ''}" data-index="${i}">
+              <div class="result-icon icon-${item.icon}">
+                ${item.icon === 'widget' ? '⬡' : item.icon === 'theme' ? '🎨' : item.icon === 'action' ? '⚡' : '⚙'}
+              </div>
+              <div class="result-info">
+                <div class="result-name">${item.name}</div>
+                <div class="result-desc">${item.desc}</div>
+              </div>
+              ${badgeHtml}
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('.result-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const idx = parseInt(el.getAttribute('data-index'));
+            if (filtered[idx]) filtered[idx].action();
+          });
+
+          el.addEventListener('mouseenter', () => {
+            activeIndex = parseInt(el.getAttribute('data-index'));
+            highlightActive();
+          });
+        });
+      }
+
+      function highlightActive() {
+        const items = document.querySelectorAll('.result-item');
+        items.forEach((el, i) => {
+          el.classList.toggle('active', i === activeIndex);
+        });
+
+        const activeEl = items[activeIndex];
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+      }
+
+      const input = document.getElementById("palette-input");
+      input.addEventListener("input", () => {
+        const query = input.value.toLowerCase().trim();
+        activeIndex = 0;
+
+        if (!query) {
+          filtered = [...allActions];
+        } else {
+          filtered = allActions.filter(a =>
+            a.name.toLowerCase().includes(query) ||
+            a.desc.toLowerCase().includes(query) ||
+            a.group.toLowerCase().includes(query)
+          );
+        }
+
+        render();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          window.close();
+          return;
+        }
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+          highlightActive();
+        }
+
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = Math.max(activeIndex - 1, 0);
+          highlightActive();
+        }
+
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (filtered[activeIndex]) {
+            filtered[activeIndex].action();
+          }
+        }
+      });
+
+      init();
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,13 +1,27 @@
-import { Tray, Menu, BrowserWindow, nativeImage, app } from "electron";
+import { Tray, Menu, BrowserWindow, nativeImage, app, MenuItemConstructorOptions } from "electron";
 import * as path from "path";
+import type { WidgetInstance } from "../sdk/types";
+
+interface TrayWidgetManagerRef {
+  getWidgets(): Map<string, WidgetInstance>;
+  toggleWidget(id: string, enabled: boolean): Promise<void>;
+  reloadWidget(id: string): Promise<void>;
+  toggleAllVisibility(): void;
+  isAllHidden(): boolean;
+}
 
 export class TrayManager {
   private tray: Tray | null = null;
   private managerWindow: BrowserWindow | null = null;
   private onOpenWidgetsFolder: () => void;
+  private widgetManagerRef: TrayWidgetManagerRef | null = null;
 
   constructor(onOpenWidgetsFolder: () => void) {
     this.onOpenWidgetsFolder = onOpenWidgetsFolder;
+  }
+
+  setWidgetManager(ref: TrayWidgetManagerRef): void {
+    this.widgetManagerRef = ref;
   }
 
   create(): void {
@@ -16,7 +30,7 @@ export class TrayManager {
 
     if (require("fs").existsSync(iconPath)) {
       icon = nativeImage.createFromPath(iconPath);
-      icon.resize({ width: 16, height: 16 });
+      icon = icon.resize({ width: 16, height: 16 });
     } else {
       icon = nativeImage.createFromBuffer(this.createIconBuffer());
       icon.setTemplateImage(false);
@@ -25,7 +39,19 @@ export class TrayManager {
     this.tray = new Tray(icon);
     this.tray.setToolTip("NxUI — Desktop Widgets");
 
-    const contextMenu = Menu.buildFromTemplate([
+    this.rebuildMenu();
+
+    this.tray.on("double-click", () => {
+      this.openManagerWindow();
+    });
+
+    console.log("[TrayManager] System tray created.");
+  }
+
+  rebuildMenu(): void {
+    if (!this.tray) return;
+
+    const menuItems: MenuItemConstructorOptions[] = [
       {
         label: "Manage Widgets",
         click: () => this.openManagerWindow(),
@@ -35,6 +61,52 @@ export class TrayManager {
         click: () => this.onOpenWidgetsFolder(),
       },
       { type: "separator" },
+    ];
+
+    if (this.widgetManagerRef) {
+      const widgets = this.widgetManagerRef.getWidgets();
+      const isAllHidden = this.widgetManagerRef.isAllHidden();
+
+      menuItems.push({
+        label: isAllHidden ? "Show All Widgets" : "Hide All Widgets",
+        accelerator: "Ctrl+H",
+        click: () => {
+          this.widgetManagerRef?.toggleAllVisibility();
+          this.rebuildMenu();
+        },
+      });
+
+      if (widgets.size > 0) {
+        const widgetSubmenu: MenuItemConstructorOptions[] = [];
+        for (const [id, instance] of widgets) {
+          widgetSubmenu.push({
+            label: instance.config.name,
+            submenu: [
+              {
+                label: instance.state.enabled ? "Disable" : "Enable",
+                click: async () => {
+                  await this.widgetManagerRef?.toggleWidget(id, !instance.state.enabled);
+                  this.rebuildMenu();
+                },
+              },
+              {
+                label: "Reload",
+                click: () => this.widgetManagerRef?.reloadWidget(id),
+              },
+            ],
+          });
+        }
+
+        menuItems.push({
+          label: "Widgets",
+          submenu: widgetSubmenu,
+        });
+      }
+
+      menuItems.push({ type: "separator" });
+    }
+
+    menuItems.push(
       {
         label: "Settings",
         click: () => this.openManagerWindow(),
@@ -45,16 +117,11 @@ export class TrayManager {
         click: () => {
           app.quit();
         },
-      },
-    ]);
+      }
+    );
 
+    const contextMenu = Menu.buildFromTemplate(menuItems);
     this.tray.setContextMenu(contextMenu);
-
-    this.tray.on("double-click", () => {
-      this.openManagerWindow();
-    });
-
-    console.log("[TrayManager] System tray created.");
   }
 
   openManagerWindow(): void {
@@ -66,8 +133,8 @@ export class TrayManager {
     const iconPath = path.join(app.getAppPath(), "assets", "icon.png");
 
     this.managerWindow = new BrowserWindow({
-      width: 600,
-      height: 500,
+      width: 700,
+      height: 600,
       title: "NxUI — Widget Manager",
       icon: require("fs").existsSync(iconPath) ? iconPath : undefined,
       frame: true,

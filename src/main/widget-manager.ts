@@ -6,7 +6,7 @@ import { setupIPC } from "./ipc-handlers";
 import { SettingsStore } from "./settings-store";
 import { ThemeManager } from "./theme-manager";
 import { FileWatcher } from "./file-watcher";
-import type { WidgetInstance } from "../sdk/types";
+import type { WidgetInstance, WidgetState } from "../sdk/types";
 
 export class WidgetManager {
   private widgets = new Map<string, WidgetInstance>();
@@ -15,6 +15,7 @@ export class WidgetManager {
   private themeManager: ThemeManager;
   private fileWatcher: FileWatcher;
   private widgetsDir: string;
+  private allHidden = false;
 
   constructor(widgetsDir: string, settings: SettingsStore, themeManager: ThemeManager) {
     this.widgetsDir = widgetsDir;
@@ -71,11 +72,16 @@ export class WidgetManager {
         },
         width: config.width,
         height: config.height,
+        opacity: 1,
       };
       this.settings.setWidgetState(widgetId, state);
     } else if (state.draggable === undefined) {
       state.draggable = true;
       this.settings.setWidgetState(widgetId, state);
+    }
+
+    if (state.opacity === undefined) {
+      state.opacity = 1;
     }
 
     const instance: WidgetInstance = { id: widgetId, filePath: entryPath, config, state };
@@ -131,6 +137,101 @@ export class WidgetManager {
       win.setIgnoreMouseEvents(!draggable, { forward: true });
       win.webContents.send("widget-drag-toggled", draggable);
     }
+  }
+
+  setWidgetOpacity(widgetId: string, opacity: number): void {
+    const instance = this.widgets.get(widgetId);
+    if (!instance) return;
+
+    const clampedOpacity = Math.max(0.1, Math.min(1, opacity));
+    instance.state.opacity = clampedOpacity;
+    this.settings.setWidgetOpacity(widgetId, clampedOpacity);
+
+    const win = this.windows.get(widgetId);
+    if (win && !win.isDestroyed()) {
+      win.setOpacity(clampedOpacity);
+    }
+  }
+
+  hideAllWidgets(): void {
+    this.allHidden = true;
+    let delay = 0;
+    for (const [, win] of this.windows) {
+      if (!win.isDestroyed()) {
+        const currentWin = win;
+        setTimeout(() => {
+          if (!currentWin.isDestroyed()) {
+            currentWin.webContents.send("widget-hide-anim");
+            setTimeout(() => {
+              if (!currentWin.isDestroyed()) currentWin.hide();
+            }, 400); // Wait for CSS transition
+          }
+        }, delay);
+        delay += 50; // Stagger effect
+      }
+    }
+    console.log("[WidgetManager] All widgets hiding sequentially.");
+  }
+
+  showAllWidgets(): void {
+    this.allHidden = false;
+    let delay = 0;
+    for (const [id, win] of this.windows) {
+      if (!win.isDestroyed()) {
+        const instance = this.widgets.get(id);
+        if (instance && instance.state.enabled) {
+          const currentWin = win;
+          setTimeout(() => {
+            if (!currentWin.isDestroyed()) {
+              currentWin.showInactive();
+              currentWin.webContents.send("widget-show-anim");
+            }
+          }, delay);
+          delay += 50;
+        }
+      }
+    }
+    console.log("[WidgetManager] All widgets showing sequentially.");
+  }
+
+  toggleAllVisibility(): void {
+    if (this.allHidden) {
+      this.showAllWidgets();
+    } else {
+      this.hideAllWidgets();
+    }
+  }
+
+  isAllHidden(): boolean {
+    return this.allHidden;
+  }
+
+  async applyProfile(profile: Record<string, WidgetState>): Promise<void> {
+    for (const [widgetId, savedState] of Object.entries(profile)) {
+      const instance = this.widgets.get(widgetId);
+      if (!instance) continue;
+
+      instance.state.position = savedState.position;
+      instance.state.enabled = savedState.enabled;
+      instance.state.opacity = savedState.opacity ?? 1;
+      instance.state.width = savedState.width;
+      instance.state.height = savedState.height;
+      this.settings.setWidgetState(widgetId, instance.state);
+
+      const win = this.windows.get(widgetId);
+      if (savedState.enabled && win && !win.isDestroyed()) {
+        win.setPosition(savedState.position.x, savedState.position.y);
+        if (savedState.width && savedState.height) {
+          win.setSize(savedState.width, savedState.height);
+        }
+        win.setOpacity(savedState.opacity ?? 1);
+      } else if (savedState.enabled && !win) {
+        await this.toggleWidget(widgetId, true);
+      } else if (!savedState.enabled && win) {
+        await this.toggleWidget(widgetId, false);
+      }
+    }
+    console.log("[WidgetManager] Profile applied.");
   }
 
   async reloadWidget(widgetId: string): Promise<void> {

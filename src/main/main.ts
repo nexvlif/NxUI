@@ -1,4 +1,4 @@
-import { app, shell, globalShortcut, ipcMain } from "electron";
+import { app, shell, globalShortcut, ipcMain, BrowserWindow, screen } from "electron";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
@@ -17,13 +17,19 @@ let trayManager: TrayManager;
 let themeManager: ThemeManager;
 let ecosystemManager: EcosystemManager;
 let editMode = false;
+let commandPaletteWin: BrowserWindow | null = null;
 
+let lastCtrlPress = 0;
+let peekTimeout: ReturnType<typeof setTimeout> | null = null;
+let focusModeActive = false;
+
+app.commandLine.appendSwitch('wm-window-animations-disabled');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=48 --gc_interval=100 --optimize_for_size');
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-features', 'Spellcheck-mac-ext,HardwareMediaKeyHandling,MediaSessionService,AudioServiceOutOfProcess,PictureInPicture');
+app.commandLine.appendSwitch('disable-spell-checking');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
-app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('disable-features', 'Spellcheck-mac-ext');
-app.commandLine.appendSwitch('disable-spell-checking');
 
 app.whenReady().then(async () => {
   console.log("╔════════════════════════════════════════╗");
@@ -43,6 +49,7 @@ app.whenReady().then(async () => {
   ecosystemManager = new EcosystemManager(widgetsDir, widgetManager);
 
   trayManager = new TrayManager(() => shell.openPath(widgetsDir));
+  trayManager.setWidgetManager(widgetManager);
   trayManager.create();
 
   await widgetManager.initialize();
@@ -51,9 +58,11 @@ app.whenReady().then(async () => {
   registerThemeIPC();
   registerEcosystemIPC();
   setupAutoStart();
+  setupFocusMode();
 
   console.log("[Main] NxUI is running! Widgets are on your desktop.");
   console.log(`[Main] Widget folder: ${widgetsDir}`);
+  console.log("[Main] Shortcuts: Ctrl+E (Edit), Ctrl+H (Hide All), Ctrl+Space (Command Palette)");
 });
 
 function registerEcosystemIPC(): void {
@@ -95,7 +104,63 @@ function registerShortcuts(): void {
       }
     }
   });
-  console.log("[Main] Shortcuts registered (Ctrl+E = Edit Mode)");
+
+  globalShortcut.register("CommandOrControl+H", () => {
+    widgetManager.toggleAllVisibility();
+    trayManager.rebuildMenu();
+    console.log(`[Main] Toggle all widgets visibility`);
+  });
+
+  globalShortcut.register("CommandOrControl+Space", () => {
+    openCommandPalette();
+  });
+
+  console.log("[Main] Shortcuts registered (Ctrl+E = Edit, Ctrl+H = Hide All, Ctrl+Space = Command Palette)");
+}
+
+function openCommandPalette(): void {
+  if (commandPaletteWin && !commandPaletteWin.isDestroyed()) {
+    commandPaletteWin.focus();
+    return;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth } = primaryDisplay.workAreaSize;
+  const paletteWidth = 560;
+  const paletteHeight = 420;
+
+  const iconPath = path.join(app.getAppPath(), "assets", "icon.png");
+
+  commandPaletteWin = new BrowserWindow({
+    width: paletteWidth,
+    height: paletteHeight,
+    x: Math.round(screenWidth / 2 - paletteWidth / 2),
+    y: 120,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, "..", "renderer", "manager-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const palettePath = path.join(__dirname, "..", "renderer", "command-palette.html");
+  commandPaletteWin.loadFile(palettePath);
+
+  commandPaletteWin.on("blur", () => {
+    if (commandPaletteWin && !commandPaletteWin.isDestroyed()) {
+      commandPaletteWin.close();
+    }
+  });
+
+  commandPaletteWin.on("closed", () => {
+    commandPaletteWin = null;
+  });
 }
 
 function registerThemeIPC(): void {
@@ -111,6 +176,28 @@ function registerThemeIPC(): void {
     await themeManager.applyToAll(widgetManager.getWindows());
     return { success: true };
   });
+
+  const { systemPreferences } = require("electron");
+
+  ipcMain.handle("get-accent-color", () => {
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      return `#${systemPreferences.getAccentColor()}`;
+    }
+    return "#00d4ff";
+  });
+
+  if (process.platform === 'win32') {
+    systemPreferences.on('accent-color-changed', (_event: any, color: string) => {
+      const hex = `#${color}`;
+      console.log("[Theme] OS Accent Color changed to:", hex);
+      const wins = BrowserWindow.getAllWindows();
+      for (const w of wins) {
+        if (!w.isDestroyed()) {
+          w.webContents.send("accent-color-changed", hex);
+        }
+      }
+    });
+  }
 }
 
 function setupAutoStart(): void {
@@ -130,6 +217,31 @@ function setupAutoStart(): void {
     });
     return { success: true };
   });
+}
+
+function setupFocusMode(): void {
+  if (!settingsStore.getFocusModeEnabled()) return;
+
+  setInterval(() => {
+    if (!settingsStore.getFocusModeEnabled()) return;
+
+    const windows = BrowserWindow.getAllWindows();
+    const hasFullscreen = windows.some(w =>
+      !w.isDestroyed() &&
+      w.isFullScreen() &&
+      w !== commandPaletteWin
+    );
+
+    if (hasFullscreen && !focusModeActive) {
+      focusModeActive = true;
+      widgetManager.hideAllWidgets();
+      console.log("[FocusMode] Fullscreen detected — widgets hidden.");
+    } else if (!hasFullscreen && focusModeActive) {
+      focusModeActive = false;
+      widgetManager.showAllWidgets();
+      console.log("[FocusMode] Fullscreen exited — widgets restored.");
+    }
+  }, 3000);
 }
 
 function ensureWidgetsDir(widgetsDir: string): void {

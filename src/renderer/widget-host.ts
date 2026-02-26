@@ -5,6 +5,22 @@ contextBridge.exposeInMainWorld("nxui", {
     ipcRenderer.on("widget-init", (_event, data) => callback(data));
   },
 
+  onShowAnim: (callback: () => void) => {
+    ipcRenderer.on("widget-show-anim", () => callback());
+  },
+
+  onHideAnim: (callback: () => void) => {
+    ipcRenderer.on("widget-hide-anim", () => callback());
+  },
+
+  emit: (event: string, data?: any) => {
+    ipcRenderer.send("widget-bus-emit", { event, data });
+  },
+
+  onBusEvent: (callback: (event: string, data?: any) => void) => {
+    ipcRenderer.on("widget-bus-on", (_e, payload: { event: string; data?: any }) => callback(payload.event, payload.data));
+  },
+
   dragMove: (deltaX: number, deltaY: number, widgetId: string) => {
     ipcRenderer.send("widget-drag-move", { id: widgetId, deltaX, deltaY });
   },
@@ -30,5 +46,9 @@ contextBridge.exposeInMainWorld("nxui", {
 
   onDragToggled: (callback: (draggable: boolean) => void) => {
     ipcRenderer.on("widget-drag-toggled", (_event, draggable) => callback(draggable));
+  },
+
+  onSettingChanged: (callback: (data: { key: string; value: any }) => void) => {
+    ipcRenderer.on("widget-setting-changed", (_event, data) => callback(data));
   },
 });

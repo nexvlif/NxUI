@@ -12,8 +12,9 @@
 
   <div class="header">
     <div class="logo">
-      <div class="logo-icon">Nx</div>
+      <img class="logo-img" id="logo-img" src="" alt="NxUI" width="32" height="32">
       <h1>Nx<span>UI</span></h1>
+      <div class="version-pill" id="version-pill">v2.0.0</div>
     </div>
     <p>Widget Manager — manage your desktop widgets</p>
   </div>
@@ -21,6 +22,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="tab-local">My Widgets</button>
     <button class="tab" data-tab="tab-store">Store</button>
+    <button class="tab" data-tab="tab-taskmanager">Task Manager</button>
     <button class="tab" data-tab="tab-settings">Settings</button>
   </div>
 
@@ -28,6 +30,7 @@
     <div class="toolbar">
       <button class="btn primary" id="btn-local-refresh">Refresh</button>
       <button class="btn" id="btn-open-folder">Open Folder</button>
+      <button class="btn accent-ghost" id="btn-hide-all">Hide All (Ctrl+H)</button>
     </div>
     <div id="local-list" class="grid">Loading...</div>
   </div>
@@ -37,6 +40,86 @@
       <button class="btn primary" id="btn-store-refresh">Refresh Store</button>
     </div>
     <div id="store-list" class="grid">Loading store...</div>
+  </div>
+
+  <div id="tab-taskmanager" class="tab-content">
+    <div class="toolbar">
+      <button class="btn primary" id="btn-tm-refresh">Refresh</button>
+      <span class="tm-auto-label">Auto-refresh every 3s</span>
+    </div>
+    <div id="taskmanager-content">
+      <div class="tm-overview">
+        <div class="tm-stat-card tm-total">
+          <div class="tm-stat-icon">Statistics</div>
+          <div class="tm-stat-info">
+            <div class="tm-stat-value" id="tm-total-mem">—</div>
+            <div class="tm-stat-label">Total Memory</div>
+          </div>
+          <div class="tm-stat-bar-wrap">
+            <div class="tm-stat-bar" id="tm-total-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="tm-stat-card">
+          <div class="tm-stat-icon">Main Process</div>
+          <div class="tm-stat-info">
+            <div class="tm-stat-value" id="tm-main-mem">—</div>
+            <div class="tm-stat-label">Main Process</div>
+          </div>
+        </div>
+        <div class="tm-stat-card">
+          <div class="tm-stat-icon">Widgets</div>
+          <div class="tm-stat-info">
+            <div class="tm-stat-value" id="tm-widget-mem">—</div>
+            <div class="tm-stat-label">All Widgets</div>
+          </div>
+        </div>
+        <div class="tm-stat-card">
+          <div class="tm-stat-icon">Uptime</div>
+          <div class="tm-stat-info">
+            <div class="tm-stat-value" id="tm-uptime">—</div>
+            <div class="tm-stat-label">Uptime</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tm-section">
+        <h3 class="tm-section-title">V8 Heap</h3>
+        <div class="tm-heap-grid">
+          <div class="tm-heap-item">
+            <span class="tm-heap-label">Heap Used</span>
+            <span class="tm-heap-value" id="tm-heap-used">—</span>
+          </div>
+          <div class="tm-heap-item">
+            <span class="tm-heap-label">Heap Total</span>
+            <span class="tm-heap-value" id="tm-heap-total">—</span>
+          </div>
+          <div class="tm-heap-item">
+            <span class="tm-heap-label">External</span>
+            <span class="tm-heap-value" id="tm-external">—</span>
+          </div>
+          <div class="tm-heap-item">
+            <span class="tm-heap-label">PID</span>
+            <span class="tm-heap-value" id="tm-pid">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tm-section">
+        <h3 class="tm-section-title">Per-Widget Breakdown</h3>
+        <div id="tm-widget-list" class="tm-widget-list"></div>
+      </div>
+
+      <div class="tm-section tm-tips">
+        <h3 class="tm-section-title">RAM Optimization Active</h3>
+        <ul class="tm-tip-list">
+          <li>V8 Heap limited to <strong>256 MB</strong></li>
+          <li>Site Isolation disabled (<strong>−30 MB</strong> per widget)</li>
+          <li>Background throttling enabled for idle widgets</li>
+          <li>Spell-checking disabled</li>
+          <li>Target: <strong>10–80 MB</strong> total usage</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <div id="tab-settings" class="tab-content">
@@ -65,6 +148,77 @@
           <div class="toggle-slider"></div>
         </label>
       </div>
+      <div class="setting-row">
+        <div>
+          <div style="font-weight:600; font-size:14px; margin-bottom:4px;">Focus Mode</div>
+          <div style="font-size:12px; color:var(--text-sec)">Auto-hide widgets when a fullscreen app is detected.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="focusmode-toggle">
+          <div class="toggle-slider"></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Layout Profiles</h3>
+      <div class="profile-controls">
+        <input type="text" id="profile-name-input" class="profile-input" placeholder="Profile name...">
+        <button class="btn primary" id="btn-save-profile">Save Current</button>
+      </div>
+      <div id="profiles-list" class="profiles-list"></div>
+    </div>
+
+    <div class="setting-group about-card" id="about-section">
+      <h3>About NxUI</h3>
+      <div class="about-content">
+        <div class="about-logo">
+          <img class="about-logo-img" id="about-logo-img" src="" alt="NxUI" width="48" height="48">
+          <div>
+            <div class="about-title">NxUI <span id="about-version">v2.0.0</span></div>
+            <div class="about-subtitle">Next-Generation Desktop Widget Engine</div>
+          </div>
+        </div>
+        <div class="about-grid">
+          <div class="about-item">
+            <span class="about-label">Electron</span>
+            <span class="about-value" id="about-electron">—</span>
+          </div>
+          <div class="about-item">
+            <span class="about-label">Node.js</span>
+            <span class="about-value" id="about-node">—</span>
+          </div>
+          <div class="about-item">
+            <span class="about-label">Chrome</span>
+            <span class="about-value" id="about-chrome">—</span>
+          </div>
+          <div class="about-item">
+            <span class="about-label">Platform</span>
+            <span class="about-value" id="about-platform">—</span>
+          </div>
+        </div>
+        <div class="about-shortcuts">
+          <div class="shortcut-title">Keyboard Shortcuts</div>
+          <div class="shortcut-row"><kbd>Ctrl+E</kbd> <span>Toggle Edit Mode</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+H</kbd> <span>Hide / Show All Widgets</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+Space</kbd> <span>Command Palette</span></div>
+        </div>
+        <div class="about-links">
+          <a href="#" class="about-link" id="link-github">GitHub Repository ↗</a>
+          <span class="about-credits">Made with ♥ by Nex</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="widget-settings-modal" class="settings-modal hidden">
+    <div class="settings-modal-backdrop"></div>
+    <div class="settings-modal-content">
+      <div class="settings-modal-header">
+        <h3 id="settings-modal-title">Widget Settings</h3>
+        <button class="settings-modal-close" id="btn-close-settings">✕</button>
+      </div>
+      <div id="settings-modal-body" class="settings-modal-body"></div>
     </div>
   </div>
 

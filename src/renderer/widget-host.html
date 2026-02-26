@@ -22,6 +22,13 @@
       background: transparent !important;
       user-select: none;
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: opacity 0.4s cubic-bezier(0.2, 0, 0, 1), transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    body.nxui-exiting {
+      opacity: 0 !important;
+      transform: scale(0.95);
+      pointer-events: none;
     }
 
     #nxui-widget-root {
@@ -147,8 +154,27 @@
       let dragStartX = 0;
       let dragStartY = 0;
 
+      window.nxui.onShowAnim(() => {
+        document.body.classList.remove('nxui-exiting');
+      });
+
+      window.nxui.onHideAnim(() => {
+        document.body.classList.add('nxui-exiting');
+      });
+
       window.nxui.onInit((data) => {
         widgetId = data.id;
+        const widgetSettings = data.settings || {};
+        let settingCallbacks = [];
+        let busListeners = {};
+
+        window.nxui.onBusEvent((eventName, payload) => {
+          if (busListeners[eventName]) {
+            busListeners[eventName].forEach(cb => {
+              try { cb(payload); } catch (e) { console.error("[NxUI] Bus event error:", e); }
+            });
+          }
+        });
 
         if (data.styles) {
           const styleEl = document.createElement("style");
@@ -211,6 +237,25 @@
               readFile: (path) => window.nxui.readFile(path),
               writeFile: (path, content) => window.nxui.writeFile(path, content),
               showOpenDialog: (options) => window.nxui.showOpenDialog(options),
+
+              getSetting: (key) => {
+                if (widgetSettings[key] !== undefined) return widgetSettings[key];
+                const schemaDef = (data.settingsSchema || []).find(s => s.key === key);
+                return schemaDef ? schemaDef.default : undefined;
+              },
+              onSettingChanged: (callback) => {
+                settingCallbacks.push(callback);
+              },
+
+              emit: (eventName, payload) => window.nxui.emit(eventName, payload),
+              on: (eventName, callback) => {
+                if (!busListeners[eventName]) busListeners[eventName] = [];
+                busListeners[eventName].push(callback);
+              },
+              off: (eventName, callback) => {
+                if (!busListeners[eventName]) return;
+                busListeners[eventName] = busListeners[eventName].filter(cb => cb !== callback);
+              }
             };
 
             onMount(ctx);
@@ -219,6 +264,13 @@
             showErrorOverlay(root, err.message);
           }
         }
+
+        window.nxui.onSettingChanged((settingData) => {
+          widgetSettings[settingData.key] = settingData.value;
+          for (const cb of settingCallbacks) {
+            try { cb(settingData.key, settingData.value); } catch (e) { console.error("[NxUI] Setting callback error:", e); }
+          }
+        });
       });
 
       window.nxui.onEditModeChanged((enabled) => {

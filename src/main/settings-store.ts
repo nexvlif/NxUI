@@ -5,21 +5,27 @@ import type { WidgetState, WidgetPosition } from "../sdk/types";
 
 interface StoreData {
   widgets: Record<string, WidgetState>;
+  widgetSettings: Record<string, Record<string, any>>;
+  profiles: Record<string, Record<string, WidgetState>>;
   globalSettings: {
     widgetsDirectory: string;
     startOnBoot: boolean;
     startMinimized: boolean;
     activeTheme: string;
+    focusModeEnabled: boolean;
   };
 }
 
 const DEFAULT_STORE: StoreData = {
   widgets: {},
+  widgetSettings: {},
+  profiles: {},
   globalSettings: {
     widgetsDirectory: "",
     startOnBoot: false,
     startMinimized: true,
     activeTheme: "miku-garden",
+    focusModeEnabled: true,
   },
 };
 
@@ -63,12 +69,61 @@ export class SettingsStore {
     }
   }
 
+  setWidgetOpacity(widgetId: string, opacity: number): void {
+    if (this.data.widgets[widgetId]) {
+      this.data.widgets[widgetId].opacity = opacity;
+      this.save();
+    }
+  }
+
+  setWidgetHidden(widgetId: string, hidden: boolean): void {
+    if (this.data.widgets[widgetId]) {
+      this.data.widgets[widgetId].hidden = hidden;
+      this.save();
+    }
+  }
+
   getAllWidgetStates(): Record<string, WidgetState> {
     return { ...this.data.widgets };
   }
 
   removeWidgetState(widgetId: string): void {
     delete this.data.widgets[widgetId];
+    delete this.data.widgetSettings[widgetId];
+    this.save();
+  }
+
+  getWidgetSettings(widgetId: string): Record<string, any> {
+    return this.data.widgetSettings[widgetId] || {};
+  }
+
+  setWidgetSetting(widgetId: string, key: string, value: any): void {
+    if (!this.data.widgetSettings[widgetId]) {
+      this.data.widgetSettings[widgetId] = {};
+    }
+    this.data.widgetSettings[widgetId][key] = value;
+    this.save();
+  }
+
+  getAllWidgetSettings(): Record<string, Record<string, any>> {
+    return { ...this.data.widgetSettings };
+  }
+
+  getProfiles(): Record<string, Record<string, WidgetState>> {
+    return { ...this.data.profiles };
+  }
+
+  saveProfile(name: string): void {
+    this.data.profiles[name] = JSON.parse(JSON.stringify(this.data.widgets));
+    this.save();
+  }
+
+  loadProfile(name: string): Record<string, WidgetState> | undefined {
+    return this.data.profiles[name];
+  }
+
+  deleteProfile(name: string): void {
+    delete this.data.profiles[name];
     this.save();
   }
 
@@ -99,12 +154,25 @@ export class SettingsStore {
     this.save();
   }
 
+  getFocusModeEnabled(): boolean {
+    return this.data.globalSettings.focusModeEnabled !== false;
+  }
+
+  setFocusModeEnabled(value: boolean): void {
+    this.data.globalSettings.focusModeEnabled = value;
+    this.save();
+  }
+
   private load(): StoreData {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
         const parsed = JSON.parse(raw);
-        return { ...DEFAULT_STORE, ...parsed };
+        return {
+          ...DEFAULT_STORE,
+          ...parsed,
+          globalSettings: { ...DEFAULT_STORE.globalSettings, ...(parsed.globalSettings || {}) },
+        };
       }
     } catch (err) {
       console.error("[SettingsStore] Failed to load settings:", err);
