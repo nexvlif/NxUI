@@ -2,9 +2,18 @@
   <img src="assets/icon.png" alt="NxUI Logo" width="120" />
   <h1>NxUI</h1>
   <p><strong>A Next-Generation, Open-Source Desktop Widget Engine</strong></p>
-  <p><em>Built with Web Technologies, Optimized for the Desktop. Welcome to the Future.</em></p>
+  <p>
+    <a href="https://github.com/nexvlif/NxUI/blob/main/DOCUMENTATION.md"><b>Documentation</b></a> •
+    <a href="https://github.com/nexvlif/nxui-widgets"><b>Widget Ecosystem</b></a>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/badge/version-2.0.0-black?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/platform-windows-lightgrey?style=flat-square" alt="Platform" />
+  </p>
+  <p><em>Built with Web Technologies, Optimized for the Desktop. Ultra-lightweight & Premium.</em></p>
   <br />
-  <img src="assets/preview.png" alt="NxUI Preview" width="800" />
+  <img src="assets/preview.png" alt="NxUI Preview" width="800" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 </div>
 
 ---
@@ -13,98 +22,79 @@
 
 NxUI is a premium desktop customization tool that allows you to build, install, and manage lively desktop widgets using the languages you already know: **HTML, CSS, and TypeScript/JavaScript**. 
 
-Unlike legacy software, NxUI leverages modern API bridging and a powerful custom widget lifecycle to give you total control over your Windows desktop layout without the extreme RAM or CPU penalties typical of Electron apps.
+Unlike legacy software, NxUI leverages modern API bridging and a powerful custom widget lifecycle to give you total control over your desktop layout without the performance penalties typical of Electron apps.
 
 ## Features
 
-* **Community Widget Store:** Browse and install stunning widgets directly from the remote NxUI ecosystem with one click. No restarting required! (Development)
-* **Global Theme Engine:** A built-in CSS variable orchestrator. Swap your entire desktop's color palette (like our default **Miku Garden**) instantly from the Settings menu.
-* **Real Hardware Data:** Direct access to Node.js `os` metrics. Display live CPU, RAM, and uptime effortlessly.
-* **CORS-Free Fetching:** Widgets can scrape or hit any external API (weather APIs, REST backends) directly through the main process safely.
-* **Direct File System Access:** Built-in SDK APIs to read and write files locally. Run a full Markdown code editor *as a widget overlay* right on your wallpaper!
-* **Visual Edit Mode:** Press `Ctrl+E` to interactively drag and drop widgets anywhere on your screen. Leave Edit Mode to lock them seamlessly into the background.
+*   **Global Theme Engine:** A built-in CSS variable orchestrator. Swap your entire desktop's color palette (like our default **Miku Garden**) instantly.
+*   **Modern SDK:** Simple, typed, and powerful SDK for widget development.
+*   **Visual Edit Mode:** Press `Ctrl + E` to interactively drag and drop widgets. Lock them seamlessly into the background when done.
+*   **Real Hardware Data:** Direct access to Node.js `os` metrics for live CPU, RAM, and uptime monitoring.
+*   **Hot Reloading:** Widgets live-reload automatically as you edit the source code.
+*   **CORS-Free Fetching:** Scrape or hit any external API directly through the main process safely.
 
-## Extreme Memory & CPU Optimization
+## Extreme Performance (No More "Electron is Heavy")
 
-We know Chromium/Electron is heavily criticized for memory bloat. NxUI specifically modifies the engine at the C++ initialization level to ensure widgets are practically invisible to your system resources:
+We've specifically tuned the Chromium engine to ensure widgets are practically invisible to your system resources. NxUI is designed for users who want beauty without sacrificing FPS:
 
-- **V8 Engine Heap Restriction:** Hard-limited to 256MB.
-- **Site Isolation Disabled:** Frees up ~30-40MB of RAM *per widget instance*.
-- **Chromium Throttling:** Background rendering and timers are aggressively killed for idle widgets.
+-   **Memory Capping:** Hard-limited V8 heap per process (`--max-old-space-size=48`).
+-   **Aggressive Throttling:** Background rendering and timers are killed for idle widgets.
+-   **Lean Process Footprint:** Disabled heavy features like spellcheck, hardware media keys, and site isolation to save ~40MB of RAM per instance.
+-   **Staggered Loading:** Animations and window creation are staggered to prevent CPU spikes.
 
-## Bundled Widgets
-Out of the box, NxUI comes with gorgeous showcase widgets:
-1. **Clock:** A dynamic SVG-based animated clock.
-2. **Notes:** A full Markdown editor that saves straight to your disk.
-3. **System Monitor:** Real-time RAM & CPU gauges.
-4. **Greeting:** A personalized dynamic message widget.
+## Developer Experience (DX)
 
-## Getting Started
+We believe building widgets should be fun. NxUI provides a streamlined workflow with path aliases and a built-in sandbox.
 
-### Installation
-1. Download the latest `NxUI` from the [Releases](#) tab (or from the `release/` folder if building from source).
-2. Install the application.
-3. NxUI will launch into your System Tray and place the default widgets on your desktop.
-4. Right-click the tray icon and click **Manage** to open the Manager UI!
+### Writing Your First Widget
 
-### Development (Build from Source)
-To run NxUI locally or develop new widgets:
+Creating a widget is incredibly easy. Just create a folder in your `widgets` directory:
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/nexvlif/NxUI.git
-cd NxUI
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the application in Developer Mode
-npm run dev
-
-# 4. Build the Windows Installer (.exe)
-npm run pack
-```
-
-## Writing Your First Widget
-
-Creating a widget is incredibly easy. Navigate to `C:\Users\{Username}\NxUI\widgets` and create a new folder `my-widget`.
-
-**1. `template.html`**
-```html
-<div class="my-box">
-  <h1 id="hello-text">Loading...</h1>
-</div>
-```
-
-**2. `styles.css`**
-```css
-.my-box {
-  background: var(--nxui-surface); /* Uses global themes! */
-  color: var(--nxui-text-primary);
-  padding: 20px;
-  border-radius: 12px;
-}
-```
-
-**3. `widget.ts`**
+**`widget.ts`**
 ```typescript
-import { defineWidget } from "../../src/sdk/define";
+import { defineWidget } from "@/sdk/define";
+import type { WidgetContext } from "@/sdk/types";
 
 export default defineWidget({
-  id: "my-hello-widget",
   name: "Hello World",
-  description: "My very first widget",
-  author: "You",
   version: "1.0.0",
-  draggable: true,
-  onMount: (ctx) => {
-    const textNode = ctx.getElementById("hello-text");
-    textNode.innerText = "Hello, NxUI!";
+  author: "YourName",
+  width: 300,
+  height: 100,
+
+  onMount(ctx: WidgetContext) {
+    ctx.getElementById("title").textContent = "Hello from NxUI!";
   }
 });
 ```
 
-And that's it! Your widget will instantly show up in the **Manager UI**, fully supporting themes, dragging, and live-reloading.
+**`template.html`**
+```html
+<div class="card">
+  <h1 id="title">Loading...</h1>
+</div>
+```
 
-## License
-NxUI is open-sourced under the MIT License. Built with for extreme desktop customization.
+## Getting Started
+
+### Installation
+1.  Download the latest installer from the [Releases](https://github.com/nexvlif/NxUI/releases) tab.
+2.  Launch NxUI from your System Tray.
+3.  Right-click the tray icon to manage your widgets or enter **Edit Mode (Ctrl+E)**.
+
+### Build from Source
+```bash
+# Clone and install
+git clone https://github.com/nexvlif/NxUI.git
+npm install
+
+# Run in development mode
+npm run dev
+
+# Build production installer
+npm run pack
+```
+
+## Contribution
+
+NxUI is built for the community. Have a cool widget? Open a Pull Request to our [Widget Ecosystem](https://github.com/nexvlif/nxui-widgets)! We love seeing new clock designs, system monitors, and creative overlays.
