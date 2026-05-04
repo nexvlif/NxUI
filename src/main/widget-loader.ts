@@ -31,10 +31,12 @@ export async function loadWidget(
   });
 
   const sandboxRequire = (id: string) => {
-    if (id.includes("sdk/define") || id.includes("nxui/sdk")) {
+    const normalizedId = id.replace("@/", "sdk/");
+
+    if (normalizedId.includes("sdk/define") || normalizedId.includes("nxui/sdk")) {
       return { defineWidget };
     }
-    if (id.includes("sdk/types") || id.includes("sdk/index") || id.includes("sdk")) {
+    if (normalizedId.includes("sdk/types") || normalizedId.includes("sdk/index") || normalizedId.includes("sdk")) {
       return {};
     }
     return require(id);

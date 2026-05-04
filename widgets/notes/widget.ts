@@ -1,5 +1,5 @@
-import { defineWidget } from "../../src/sdk/define";
-import type { WidgetContext } from "../../src/sdk/types";
+import { defineWidget } from "@/sdk/define";
+import type { WidgetContext } from "@/sdk/types";
 
 export default defineWidget({
   name: "Notes",
